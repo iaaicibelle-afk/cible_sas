@@ -240,16 +240,34 @@ export const exportToXLS = async (elementId: string, filename: string) => {
     // Adicionar dados de cada campo
     Object.keys(fieldTitles).forEach(fieldId => {
       const title = fieldTitles[fieldId];
-      let content = fieldsData[fieldId]?.content || '';
+      const fieldData = fieldsData[fieldId];
+      let content = '';
+      
+      // Verificar se há conteúdo direto no campo
+      if (fieldData?.content && fieldData.content.trim()) {
+        content = fieldData.content;
+        // Limpar tags de formatação do conteúdo
+        content = content.replace(/\[\[blue\]\]|\[\[\/blue\]\]/g, '');
+        content = content.replace(/\[\[red\]\]|\[\[\/red\]\]/g, '');
+        content = content.replace(/\[\[purple\]\]|\[\[\/purple\]\]/g, '');
+      }
+      
+      // Verificar se há bullet points
+      if (fieldData?.bulletPoints && Array.isArray(fieldData.bulletPoints) && fieldData.bulletPoints.length > 0) {
+        const bulletTexts = fieldData.bulletPoints
+          .filter((bullet: any) => bullet.text && bullet.text.trim())
+          .map((bullet: any) => `• ${bullet.text.trim()}`)
+          .join('\n');
+        
+        if (bulletTexts) {
+          content = content ? `${content}\n\n${bulletTexts}` : bulletTexts;
+        }
+      }
       
       console.log(`Campo ${fieldId}:`, content ? `"${content}"` : 'VAZIO');
       
       if (content && content.trim()) {
         fieldsWithContent++;
-        // Limpar tags de formatação do conteúdo
-        content = content.replace(/\[\[blue\]\]|\[\[\/blue\]\]/g, '');
-        content = content.replace(/\[\[red\]\]|\[\[\/red\]\]/g, '');
-        content = content.replace(/\[\[purple\]\]|\[\[\/purple\]\]/g, '');
         data.push([title, content]);
       } else {
         fieldsEmpty++;
@@ -447,9 +465,11 @@ export const exportInsightsToPDF = async (elementId: string, filename: string) =
           const insightTexts = purpleBullets.map((bullet: any) => bullet.text).filter((text: string) => text && text.trim().length > 0);
           
           if (insightTexts.length > 0) {
+            // Formatar cada bullet point em uma linha separada
+            const formattedContent = insightTexts.map(text => `• ${text}`).join('\n');
             insights.push({
               field: title,
-              content: insightTexts.join(' | ')
+              content: formattedContent
             });
           }
         }
@@ -523,38 +543,49 @@ export const exportInsightsToPDF = async (elementId: string, filename: string) =
       // Quebrar texto em linhas para caber na página com margem de segurança adicional
       const textWidth = contentWidth - 25; // Ajustar para considerar a margem do texto alinhado
       
-      // Função personalizada para quebrar texto preservando palavras
+      // Função personalizada para quebrar texto preservando palavras e quebras de linha
       const breakTextIntoLines = (text: string, maxWidth: number): string[] => {
-        const words = text.split(' ');
-        const lines: string[] = [];
-        let currentLine = '';
+        // Primeiro, dividir por quebras de linha existentes
+        const paragraphs = text.split('\n');
+        const allLines: string[] = [];
         
         // Definir fonte antes de medir o texto
         pdf.setFont('helvetica', 'normal');
         pdf.setFontSize(12);
         
-        words.forEach(word => {
-          const testLine = currentLine ? `${currentLine} ${word}` : word;
-          const testWidth = pdf.getTextWidth(testLine);
+        paragraphs.forEach(paragraph => {
+          if (!paragraph.trim()) {
+            // Linha vazia, adicionar espaço
+            allLines.push('');
+            return;
+          }
           
-          if (testWidth <= maxWidth) {
-            currentLine = testLine;
-          } else {
-            if (currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
+          const words = paragraph.split(' ');
+          let currentLine = '';
+          
+          words.forEach(word => {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const testWidth = pdf.getTextWidth(testLine);
+            
+            if (testWidth <= maxWidth) {
+              currentLine = testLine;
             } else {
-              // Palavra muito longa, forçar quebra
-              lines.push(word);
+              if (currentLine) {
+                allLines.push(currentLine);
+                currentLine = word;
+              } else {
+                // Palavra muito longa, forçar quebra
+                allLines.push(word);
+              }
             }
+          });
+          
+          if (currentLine) {
+            allLines.push(currentLine);
           }
         });
         
-        if (currentLine) {
-          lines.push(currentLine);
-        }
-        
-        return lines;
+        return allLines;
       };
       
       const lines = breakTextIntoLines(insight.content, textWidth);
