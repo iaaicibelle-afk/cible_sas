@@ -20,6 +20,7 @@ interface CanvasContextType {
   activeField: string | null;
   setActiveField: (id: string | null) => void;
   resetFields: () => void;
+  loadCanvas: (canvasData: Record<string, FieldData>) => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
 }
@@ -54,6 +55,7 @@ const CanvasContext = createContext<CanvasContextType>({
   activeField: null,
   setActiveField: () => {},
   resetFields: () => {},
+  loadCanvas: () => {},
   isDarkMode: true,
   toggleTheme: () => {},
 });
@@ -118,6 +120,11 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     localStorage.removeItem('innovAI-canvas');
   };
 
+  const loadCanvas = (canvasData: Record<string, FieldData>) => {
+    setFields(canvasData);
+    localStorage.setItem('innovAI-canvas', JSON.stringify(canvasData));
+  };
+
   const toggleTheme = () => {
     setIsDarkMode(prev => !prev);
   };
@@ -131,6 +138,7 @@ export const CanvasProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       activeField, 
       setActiveField, 
       resetFields,
+      loadCanvas,
       isDarkMode,
       toggleTheme
     }}>

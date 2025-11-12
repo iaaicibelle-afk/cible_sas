@@ -1,8 +1,25 @@
 import React from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { CanvasProvider, useCanvas } from './context/CanvasContext';
+import Login from './components/Login';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Canvas from './components/Canvas';
-import { CanvasProvider, useCanvas } from './context/CanvasContext';
+
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-900 via-purple-800 to-purple-900">
+        <div className="text-white text-xl">Carregando...</div>
+      </div>
+    );
+  }
+
+  return user ? <>{children}</> : <Navigate to="/login" />;
+};
 
 const AppContent = () => {
   const { isDarkMode } = useCanvas();
@@ -24,9 +41,24 @@ const AppContent = () => {
 
 function App() {
   return (
-    <CanvasProvider>
-      <AppContent />
-    </CanvasProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <CanvasProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/canvas"
+              element={
+                <ProtectedRoute>
+                  <AppContent />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/canvas" />} />
+          </Routes>
+        </CanvasProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
