@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, RefreshCw, Sun, Moon, FileSpreadsheet, Lightbulb, Save, FolderOpen, LogOut } from 'lucide-react';
+import { Download, RefreshCw, Sun, Moon, FileSpreadsheet, Lightbulb, Save, FolderOpen, LogOut, Settings } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -155,13 +155,19 @@ const Header: React.FC = () => {
           </div>
 
           {profile?.role === 'super_admin' && (
-            <div className={`px-3 py-2 text-xs rounded-md ${
-              isDarkMode 
-                ? 'bg-yellow-600 text-white' 
-                : 'bg-yellow-500 text-white'
-            }`}>
-              Admin
-            </div>
+            <>
+              <button
+                onClick={() => navigate('/admin')}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+                  isDarkMode 
+                    ? 'bg-yellow-600 hover:bg-yellow-700 text-white' 
+                    : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                }`}
+              >
+                <Settings size={16} />
+                <span className="hidden md:inline">Admin</span>
+              </button>
+            </>
           )}
           
           <button

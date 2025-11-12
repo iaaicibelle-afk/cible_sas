@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CanvasProvider, useCanvas } from './context/CanvasContext';
 import Login from './components/Login';
+import ResetPassword from './components/ResetPassword';
+import AdminPanel from './components/AdminPanel';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Canvas from './components/Canvas';
@@ -46,6 +48,15 @@ function App() {
         <CanvasProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route
+              path="/admin"
+              element={
+                <ProtectedRoute>
+                  <AdminPanel />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/canvas"
               element={

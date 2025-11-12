@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -8,6 +9,7 @@ const Login: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
@@ -25,6 +27,32 @@ const Login: React.FC = () => {
       setLoading(false);
     } else {
       navigate('/canvas');
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      setError('Digite seu email para resetar a senha');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+
+    try {
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+
+      if (resetError) {
+        setError(resetError.message);
+      } else {
+        setResetEmailSent(true);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro ao enviar email de reset');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -79,12 +107,39 @@ const Login: React.FC = () => {
             {loading ? 'Carregando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
           </button>
         </form>
-        <button
-          onClick={() => setIsSignUp(!isSignUp)}
-          className="mt-4 text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400"
-        >
-          {isSignUp ? 'Já tem conta? Faça login' : 'Não tem conta? Criar conta'}
-        </button>
+        <div className="mt-4 space-y-2">
+          {resetEmailSent ? (
+            <div className="text-center">
+              <div className="text-green-500 mb-2">Email de reset enviado!</div>
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                Verifique sua caixa de entrada e siga as instruções para resetar sua senha.
+              </p>
+              <button
+                onClick={() => setResetEmailSent(false)}
+                className="mt-2 text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400"
+              >
+                Voltar ao login
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={() => setIsSignUp(!isSignUp)}
+                className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 block w-full text-center"
+              >
+                {isSignUp ? 'Já tem conta? Faça login' : 'Não tem conta? Criar conta'}
+              </button>
+              {!isSignUp && (
+                <button
+                  onClick={handleForgotPassword}
+                  className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 block w-full text-center"
+                >
+                  Esqueci minha senha
+                </button>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
