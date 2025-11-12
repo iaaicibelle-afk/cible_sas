@@ -40,33 +40,30 @@ const CanvasList: React.FC<{ onLoadCanvas: (data: any) => void }> = ({ onLoadCan
 
     try {
       setLoading(true);
-      // Buscar todos os usuários que têm canvas salvos
-      const { data: canvasesData, error: canvasesError } = await supabase
-        .from('saved_canvases')
-        .select('user_id')
-        .order('saved_at', { ascending: false });
+      
+      // Para super_admin, buscar TODOS os perfis, não apenas os que têm canvas
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .order('created_at', { ascending: false });
 
-      if (canvasesError) throw canvasesError;
+      if (profilesError) throw profilesError;
 
-      // Pegar IDs únicos de usuários
-      const userIds = [...new Set(canvasesData?.map(c => c.user_id) || [])];
-
-      if (userIds.length === 0) {
+      if (!profilesData || profilesData.length === 0) {
         setUsers([]);
         setLoading(false);
         return;
       }
 
-      // Buscar perfis dos usuários
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, email')
-        .in('id', userIds);
+      // Buscar todos os canvas para contar por usuário
+      const { data: canvasesData, error: canvasesError } = await supabase
+        .from('saved_canvases')
+        .select('user_id');
 
-      if (profilesError) throw profilesError;
+      if (canvasesError) throw canvasesError;
 
       // Contar canvas por usuário
-      const usersWithCounts = (profilesData || []).map(profile => {
+      const usersWithCounts = profilesData.map(profile => {
         const count = canvasesData?.filter(c => c.user_id === profile.id).length || 0;
         return {
           ...profile,
@@ -94,11 +91,24 @@ const CanvasList: React.FC<{ onLoadCanvas: (data: any) => void }> = ({ onLoadCan
         ? selectedUserId 
         : user.id;
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('saved_canvases')
         .select('id, canvas_data, saved_at, user_id')
-        .eq('user_id', targetUserId)
         .order('saved_at', { ascending: false });
+
+      // Se for super_admin sem usuário selecionado, buscar todos
+      // Se for super_admin com usuário selecionado, filtrar por aquele usuário
+      // Se for usuário normal, filtrar pelo próprio ID
+      if (profile?.role === 'super_admin') {
+        if (selectedUserId) {
+          query = query.eq('user_id', selectedUserId);
+        }
+        // Se não tiver selectedUserId, não filtra (busca todos)
+      } else {
+        query = query.eq('user_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching canvases:', error);
