@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -6,10 +6,81 @@ const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    let subscription: { data: { subscription: { unsubscribe: () => void } } } | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
+
+    // Processar o token do email quando a página carregar
+    const processToken = async () => {
+      try {
+        // Verificar se há hash na URL (token do email)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        const type = hashParams.get('type');
+
+        // Se não houver token no hash, verificar se já há sessão
+        if (!accessToken || type !== 'recovery') {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            // Já autenticado, pode resetar senha
+            setLoading(false);
+            return;
+          } else {
+            setError('Link inválido. Por favor, use o link enviado por email.');
+            setLoading(false);
+            return;
+          }
+        }
+
+        // O Supabase processa automaticamente o hash quando a página carrega
+        // Ouvir mudanças de autenticação
+        const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+            // Token processado com sucesso
+            setLoading(false);
+          } else if (event === 'SIGNED_OUT' || !session) {
+            // Token inválido ou expirado
+            setError('Token inválido ou expirado. Solicite um novo link de reset.');
+            setLoading(false);
+          }
+        });
+        subscription = { data: { subscription: sub } };
+
+        // Verificar sessão após um breve delay para dar tempo do Supabase processar
+        timeoutId = setTimeout(async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            setLoading(false);
+          } else {
+            setError('Token inválido ou expirado. Solicite um novo link de reset.');
+            setLoading(false);
+          }
+        }, 1500);
+      } catch (err: any) {
+        console.error('Error processing token:', err);
+        setError('Erro ao processar o link de reset. Tente novamente.');
+        setLoading(false);
+      }
+    };
+
+    processToken();
+
+    // Cleanup
+    return () => {
+      if (subscription?.data?.subscription) {
+        subscription.data.subscription.unsubscribe();
+      }
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,9 +96,16 @@ const ResetPassword: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setProcessing(true);
 
     try {
+      // Verificar se há sessão ativa
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error('Sessão expirada. Por favor, solicite um novo link de reset.');
+      }
+
       const { error: updateError } = await supabase.auth.updateUser({
         password: password,
       });
@@ -36,12 +114,13 @@ const ResetPassword: React.FC = () => {
 
       setSuccess(true);
       setTimeout(() => {
+        supabase.auth.signOut();
         navigate('/login');
       }, 2000);
     } catch (err: any) {
       setError(err.message || 'Erro ao resetar senha');
     } finally {
-      setLoading(false);
+      setProcessing(false);
     }
   };
 
@@ -61,10 +140,24 @@ const ResetPassword: React.FC = () => {
           Resetar Senha
         </h2>
 
-        {success ? (
+        {loading ? (
+          <div className="text-center">
+            <div className="text-gray-600 dark:text-gray-300">Processando link de reset...</div>
+          </div>
+        ) : success ? (
           <div className="text-center">
             <div className="text-green-500 mb-4">Senha alterada com sucesso!</div>
             <p className="text-gray-600 dark:text-gray-300">Redirecionando para o login...</p>
+          </div>
+        ) : error && !password ? (
+          <div className="text-center">
+            <div className="text-red-500 mb-4">{error}</div>
+            <button
+              onClick={() => navigate('/login')}
+              className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400"
+            >
+              Voltar para o login
+            </button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,10 +190,10 @@ const ResetPassword: React.FC = () => {
             )}
             <button
               type="submit"
-              disabled={loading}
+              disabled={processing}
               className="w-full bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50"
             >
-              {loading ? 'Alterando senha...' : 'Alterar Senha'}
+              {processing ? 'Alterando senha...' : 'Alterar Senha'}
             </button>
           </form>
         )}
