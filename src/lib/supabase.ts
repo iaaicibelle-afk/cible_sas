@@ -15,6 +15,20 @@ if (import.meta.env.DEV) {
   console.log('Supabase URL:', supabaseUrl);
 }
 
+// Função helper para obter a URL do site (produção ou desenvolvimento)
+export const getSiteUrl = (): string => {
+  // Prioriza a variável de ambiente VITE_SITE_URL se estiver definida
+  if (import.meta.env.VITE_SITE_URL) {
+    return import.meta.env.VITE_SITE_URL;
+  }
+  // Em produção, tenta detectar automaticamente
+  if (import.meta.env.PROD && typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  // Em desenvolvimento, usa localhost
+  return window.location.origin;
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

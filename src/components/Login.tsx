@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, getSiteUrl } from '../lib/supabase';
 import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 
 // ============================================
@@ -54,8 +54,9 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
+      // Usa a função helper para obter a URL correta (produção ou desenvolvimento)
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${getSiteUrl()}/reset-password`,
       });
 
       if (resetError) {
