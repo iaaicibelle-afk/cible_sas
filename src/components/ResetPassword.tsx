@@ -19,20 +19,35 @@ const ResetPassword: React.FC = () => {
     // Processar o token do email quando a página carregar
     const processToken = async () => {
       try {
-        // Verificar se há hash na URL (token do email)
+        // Verificar se há hash na URL (token do email) - formato padrão do Supabase
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const accessToken = hashParams.get('access_token');
         const type = hashParams.get('type');
+        
+        // Também verificar query params (caso o Supabase use esse formato)
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryToken = urlParams.get('access_token');
+        const queryType = urlParams.get('type');
 
-        // Se não houver token no hash, verificar se já há sessão
-        if (!accessToken || type !== 'recovery') {
+        const token = accessToken || queryToken;
+        const tokenType = type || queryType;
+
+        console.log('Processing reset password token:', { token: !!token, type: tokenType, hash: window.location.hash, search: window.location.search });
+
+        // Se não houver token, verificar se já há sessão (usuário pode ter clicado no link novamente)
+        if (!token || tokenType !== 'recovery') {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
             // Já autenticado, pode resetar senha
+            console.log('Session already exists, allowing password reset');
             setLoading(false);
             return;
           } else {
-            setError('Link inválido. Por favor, use o link enviado por email.');
+            // Limpar hash/query params da URL para evitar confusão
+            if (window.location.hash || window.location.search) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            setError('Link inválido ou expirado. Por favor, solicite um novo link de reset de senha.');
             setLoading(false);
             return;
           }
@@ -41,11 +56,18 @@ const ResetPassword: React.FC = () => {
         // O Supabase processa automaticamente o hash quando a página carrega
         // Ouvir mudanças de autenticação
         const { data: { subscription: sub } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('Auth state changed:', event, session ? 'has session' : 'no session');
           if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
             // Token processado com sucesso
+            console.log('Password recovery successful');
             setLoading(false);
-          } else if (event === 'SIGNED_OUT' || !session) {
+            // Limpar hash da URL após processar
+            if (window.location.hash) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+          } else if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
             // Token inválido ou expirado
+            console.error('Token invalid or expired');
             setError('Token inválido ou expirado. Solicite um novo link de reset.');
             setLoading(false);
           }
@@ -56,12 +78,18 @@ const ResetPassword: React.FC = () => {
         timeoutId = setTimeout(async () => {
           const { data: { session } } = await supabase.auth.getSession();
           if (session) {
+            console.log('Session verified after timeout');
             setLoading(false);
+            // Limpar hash da URL
+            if (window.location.hash) {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
           } else {
+            console.error('No session after timeout');
             setError('Token inválido ou expirado. Solicite um novo link de reset.');
             setLoading(false);
           }
-        }, 1500);
+        }, 2000);
       } catch (err: any) {
         console.error('Error processing token:', err);
         setError('Erro ao processar o link de reset. Tente novamente.');

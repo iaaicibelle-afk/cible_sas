@@ -7,6 +7,8 @@ import { User, Trash2, Key, Plus, Search, ArrowLeft } from 'lucide-react';
 interface UserProfile {
   id: string;
   email: string;
+  name?: string | null;
+  phone?: string | null;
   role: 'super_admin' | 'user';
   created_at: string;
 }
@@ -22,6 +24,8 @@ const AdminPanel: React.FC = () => {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
   const [resetPassword, setResetPassword] = useState('');
 
   useEffect(() => {
@@ -112,6 +116,8 @@ const AdminPanel: React.FC = () => {
           action: 'createUser',
           email: newEmail,
           password: newPassword,
+          name: newName || null,
+          phone: newPhone || null,
         }),
       });
 
@@ -124,6 +130,8 @@ const AdminPanel: React.FC = () => {
       setShowCreateModal(false);
       setNewEmail('');
       setNewPassword('');
+      setNewName('');
+      setNewPhone('');
       fetchUsers();
       alert('Usuário criado com sucesso!');
     } catch (error: any) {
@@ -192,7 +200,9 @@ const AdminPanel: React.FC = () => {
   };
 
   const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (user.phone && user.phone.includes(searchTerm))
   );
 
   if (profile?.role !== 'super_admin') {
@@ -227,7 +237,7 @@ const AdminPanel: React.FC = () => {
           <Search size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Pesquisar usuário por email..."
+            placeholder="Pesquisar por nome, email ou telefone..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 pr-4 py-2 rounded-md bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"
@@ -248,7 +258,13 @@ const AdminPanel: React.FC = () => {
                 <thead className="bg-gray-100 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Nome
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Email
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Telefone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">
                       Role
@@ -265,7 +281,13 @@ const AdminPanel: React.FC = () => {
                   {filteredUsers.map((user) => (
                     <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {user.name || '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {user.email}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                        {user.phone || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <select
@@ -318,6 +340,30 @@ const AdminPanel: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Nome
+                </label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Nome completo"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Telefone
+                </label>
+                <input
+                  type="tel"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email
                 </label>
                 <input
@@ -344,6 +390,8 @@ const AdminPanel: React.FC = () => {
                     setShowCreateModal(false);
                     setNewEmail('');
                     setNewPassword('');
+                    setNewName('');
+                    setNewPhone('');
                   }}
                   className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
                 >

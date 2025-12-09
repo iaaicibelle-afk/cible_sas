@@ -21,12 +21,23 @@ export const getSiteUrl = (): string => {
   if (import.meta.env.VITE_SITE_URL) {
     return import.meta.env.VITE_SITE_URL;
   }
-  // Em produção, tenta detectar automaticamente
+  
+  // Em produção (build), usa a URL atual do navegador
   if (import.meta.env.PROD && typeof window !== 'undefined') {
+    const origin = window.location.origin;
+    // Se não for localhost, retorna a URL de produção
+    if (!origin.includes('localhost') && !origin.includes('127.0.0.1')) {
+      return origin;
+    }
+  }
+  
+  // Em desenvolvimento ou fallback, usa localhost
+  if (typeof window !== 'undefined') {
     return window.location.origin;
   }
-  // Em desenvolvimento, usa localhost
-  return window.location.origin;
+  
+  // Fallback final
+  return 'https://canvassas.netlify.app';
 };
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

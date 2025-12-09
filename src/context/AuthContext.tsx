@@ -14,7 +14,7 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, name?: string, phone?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
 }
 
@@ -139,11 +139,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error };
   };
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
+  const signUp = async (email: string, password: string, name?: string, phone?: string) => {
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          name: name || '',
+          phone: phone || '',
+        },
+      },
     });
+
+    // Se o cadastro foi bem-sucedido e temos name/phone, atualizar o perfil
+    // Aguardar um pouco para garantir que o trigger criou o perfil
+    if (!error && data.user && (name || phone)) {
+      // Tentar atualizar o perfil com retry
+      let retries = 3;
+      while (retries > 0) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({
+            name: name || null,
+            phone: phone || null,
+          })
+          .eq('id', data.user.id);
+
+        if (!profileError) {
+          break; // Sucesso
+        }
+
+        // Se erro e ainda há tentativas, aguardar um pouco e tentar novamente
+        if (retries > 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        retries--;
+
+        if (profileError && retries === 0) {
+          console.error('Error updating profile after retries:', profileError);
+        }
+      }
+    }
+
     return { error };
   };
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase, getSiteUrl } from '../lib/supabase';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
 
 // ============================================
 // CONFIGURAÇÃO DA IMAGEM DO HERO (LADO ESQUERDO)
@@ -19,6 +19,8 @@ const HERO_IMAGE_URL = '/imagem-login.jpeg';
 const Login: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,8 +34,14 @@ const Login: React.FC = () => {
     setError(null);
     setLoading(true);
 
+    if (isSignUp && (!name || !phone)) {
+      setError('Por favor, preencha todos os campos');
+      setLoading(false);
+      return;
+    }
+
     const { error } = isSignUp
-      ? await signUp(email, password)
+      ? await signUp(email, password, name, phone)
       : await signIn(email, password);
 
     if (error) {
@@ -55,8 +63,12 @@ const Login: React.FC = () => {
 
     try {
       // Usa a função helper para obter a URL correta (produção ou desenvolvimento)
+      const siteUrl = getSiteUrl();
+      const redirectUrl = `${siteUrl}/reset-password`;
+      console.log('Sending password reset email with redirect URL:', redirectUrl);
+      
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${getSiteUrl()}/reset-password`,
+        redirectTo: redirectUrl,
       });
 
       if (resetError) {
@@ -132,10 +144,12 @@ const Login: React.FC = () => {
                 Artificial Intelligence Canvas
               </p>
               <h2 className="text-2xl font-semibold text-white mb-2">
-                Bem-vindo de volta
+                {isSignUp ? 'Criar Conta' : 'Bem-vindo de volta'}
               </h2>
               <p className="text-sm text-white/70">
-                Insira seus dados para acessar sua área exclusiva
+                {isSignUp 
+                  ? 'Preencha os dados para criar sua conta' 
+                  : 'Insira seus dados para acessar sua área exclusiva'}
               </p>
             </div>
 
@@ -179,6 +193,52 @@ const Login: React.FC = () => {
                     />
                   </div>
                 </div>
+
+                {/* Name Field - Only for Sign Up */}
+                {isSignUp && (
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-white mb-2">
+                      Nome
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <User className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="name"
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Seu nome completo"
+                        required={isSignUp}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 text-white placeholder:text-gray-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Phone Field - Only for Sign Up */}
+                {isSignUp && (
+                  <div>
+                    <label htmlFor="phone" className="block text-sm font-medium text-white mb-2">
+                      Número de Telefone
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <Phone className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="phone"
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="(00) 00000-0000"
+                        required={isSignUp}
+                        className="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all duration-200 text-white placeholder:text-gray-500"
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* Password Field */}
                 <div>
@@ -251,6 +311,11 @@ const Login: React.FC = () => {
                     onClick={() => {
                       setIsSignUp(!isSignUp);
                       setError(null);
+                      // Limpar campos quando alternar
+                      if (!isSignUp) {
+                        setName('');
+                        setPhone('');
+                      }
                     }}
                     className="text-sm text-white hover:text-white/80 transition-colors duration-200"
                   >
