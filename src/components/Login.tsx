@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase, getSiteUrl } from '../lib/supabase';
-import { Mail, Lock, Eye, EyeOff, User, Phone } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, User, Phone, CheckCircle2, X } from 'lucide-react';
 
 // ============================================
 // CONFIGURAÇÃO DA IMAGEM DO HERO (LADO ESQUERDO)
@@ -26,6 +26,7 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
@@ -48,7 +49,19 @@ const Login: React.FC = () => {
       setError(error.message);
       setLoading(false);
     } else {
-      navigate('/canvas');
+      if (isSignUp) {
+        // Após cadastro bem-sucedido, mostrar toast de sucesso
+        setLoading(false);
+        setShowSuccessToast(true);
+        // Limpar campos e voltar para modo de login
+        setEmail('');
+        setPassword('');
+        setName('');
+        setPhone('');
+        setIsSignUp(false);
+      } else {
+        navigate('/canvas');
+      }
     }
   };
 
@@ -83,8 +96,39 @@ const Login: React.FC = () => {
     }
   };
 
+  // Auto-fechar o toast após 8 segundos
+  useEffect(() => {
+    if (showSuccessToast) {
+      const timer = setTimeout(() => {
+        setShowSuccessToast(false);
+      }, 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessToast]);
+
   return (
-    <div className="min-h-screen flex">
+    <React.Fragment>
+      {/* Toast de Sucesso */}
+      {showSuccessToast && (
+        <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 animate-fadeIn">
+          <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-4 rounded-lg shadow-2xl border border-purple-500/30 flex items-center gap-3 min-w-[320px] max-w-md">
+            <CheckCircle2 className="h-5 w-5 text-white flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                Cadastro realizado com sucesso. Verifique seu e-mail para confirmar sua conta.
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSuccessToast(false)}
+              className="text-white/80 hover:text-white transition-colors flex-shrink-0"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen flex">
       {/* Left Side - Hero Image */}
       <div className="hidden md:flex md:w-1/2 relative bg-gray-900">
         {/* Background Image */}
@@ -338,7 +382,8 @@ const Login: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </React.Fragment>
   );
 };
 
