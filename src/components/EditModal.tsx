@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
 import { getColorOptions } from '../utils/colors';
 import { FieldColor, BulletPoint } from '../types';
@@ -65,6 +65,20 @@ const EditModal: React.FC = () => {
     ));
   };
 
+  const moveBulletPointUp = (index: number) => {
+    if (index === 0) return;
+    const newBulletPoints = [...bulletPoints];
+    [newBulletPoints[index - 1], newBulletPoints[index]] = [newBulletPoints[index], newBulletPoints[index - 1]];
+    setBulletPoints(newBulletPoints);
+  };
+
+  const moveBulletPointDown = (index: number) => {
+    if (index === bulletPoints.length - 1) return;
+    const newBulletPoints = [...bulletPoints];
+    [newBulletPoints[index], newBulletPoints[index + 1]] = [newBulletPoints[index + 1], newBulletPoints[index]];
+    setBulletPoints(newBulletPoints);
+  };
+
   const handleSave = () => {
     if (activeField) {
       updateFieldBulletPoints(activeField, bulletPoints);
@@ -113,6 +127,38 @@ const EditModal: React.FC = () => {
                 !isCentralField && bullet.color === 'purple' ? 'bg-purple-400' :
                 'bg-gray-400'
               }`} />
+              
+              {/* Botões de movimento */}
+              <div className="flex flex-col gap-0.5">
+                <button
+                  onClick={() => moveBulletPointUp(index)}
+                  disabled={index === 0}
+                  className={`p-0.5 rounded transition-colors ${
+                    index === 0
+                      ? 'text-gray-500 cursor-not-allowed opacity-40'
+                      : isDarkMode 
+                        ? 'text-purple-300 hover:text-white hover:bg-purple-700' 
+                        : 'text-purple-500 hover:text-purple-700 hover:bg-purple-100'
+                  }`}
+                  title="Mover para cima"
+                >
+                  <ChevronUp size={14} />
+                </button>
+                <button
+                  onClick={() => moveBulletPointDown(index)}
+                  disabled={index === bulletPoints.length - 1}
+                  className={`p-0.5 rounded transition-colors ${
+                    index === bulletPoints.length - 1
+                      ? 'text-gray-500 cursor-not-allowed opacity-40'
+                      : isDarkMode 
+                        ? 'text-purple-300 hover:text-white hover:bg-purple-700' 
+                        : 'text-purple-500 hover:text-purple-700 hover:bg-purple-100'
+                  }`}
+                  title="Mover para baixo"
+                >
+                  <ChevronDown size={14} />
+                </button>
+              </div>
               
               {/* Texto editável */}
               <input
