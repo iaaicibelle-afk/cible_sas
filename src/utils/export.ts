@@ -406,6 +406,23 @@ export const exportInsightsToXLS = async (elementId: string, filename: string) =
 };
 
 // Função para exportar insights para PDF (otimizada para impressão)
+// Estrutura de blocos do canvas: ordem e agrupamento (1.a/1.b para duas colunas)
+const INSIGHTS_PDF_UNNUMBERED_FIELD_IDS = [
+  'company-name', 'project-leader', 'management-team', 'contact-point', 'start-date', 'end-date'
+] as const;
+const INSIGHTS_PDF_BLOCKS: Array<{ blockNumber: number; fieldIds: string[] }> = [
+  { blockNumber: 1, fieldIds: ['corporate-strategy', 'objectives-value'] },
+  { blockNumber: 2, fieldIds: ['key-activities'] },
+  { blockNumber: 3, fieldIds: ['internal-team', 'external-team'] },
+  { blockNumber: 4, fieldIds: ['ai-tools-models'] },
+  { blockNumber: 5, fieldIds: ['problems-pains', 'expected-benefits'] },
+  { blockNumber: 6, fieldIds: ['skills'] },
+  { blockNumber: 7, fieldIds: ['investment'] },
+  { blockNumber: 8, fieldIds: ['mvp-poc'] },
+  { blockNumber: 9, fieldIds: ['performance-metrics'] },
+  { blockNumber: 10, fieldIds: ['governance-ethics'] }
+];
+
 export const exportInsightsToPDF = async (elementId: string, filename: string) => {
   try {
     // Mapeamento de IDs para títulos legíveis
@@ -449,32 +466,40 @@ export const exportInsightsToPDF = async (elementId: string, filename: string) =
       return;
     }
 
-    // Coletar insights
-    const insights: Array<{field: string, content: string}> = [];
-    
-    Object.keys(fieldTitles).forEach(fieldId => {
+    // Coletar insights em ordem de blocos, com numberLabel (1.a, 1.b, 2, 3.a, …)
+    type InsightItem = { field: string; content: string; numberLabel: string };
+    const insights: InsightItem[] = [];
+
+    const getPurpleContent = (fieldData: any): string | null => {
+      if (!fieldData?.bulletPoints || !Array.isArray(fieldData.bulletPoints)) return null;
+      const purpleBullets = fieldData.bulletPoints.filter((b: any) => b.color === 'purple');
+      if (purpleBullets.length === 0) return null;
+      const texts = purpleBullets.map((b: any) => b.text).filter((t: string) => t && t.trim().length > 0);
+      if (texts.length === 0) return null;
+      return texts.map((t: string) => `• ${t}`).join('\n');
+    };
+
+    // 1) Campos sem número (coluna central) no início
+    for (const fieldId of INSIGHTS_PDF_UNNUMBERED_FIELD_IDS) {
       const title = fieldTitles[fieldId];
-      const fieldData = fieldsData[fieldId];
-      
-      // Verificar se o campo tem bullet points
-      if (fieldData?.bulletPoints && Array.isArray(fieldData.bulletPoints)) {
-        // Filtrar apenas bullet points roxos
-        const purpleBullets = fieldData.bulletPoints.filter((bullet: any) => bullet.color === 'purple');
-        
-        if (purpleBullets.length > 0) {
-          const insightTexts = purpleBullets.map((bullet: any) => bullet.text).filter((text: string) => text && text.trim().length > 0);
-          
-          if (insightTexts.length > 0) {
-            // Formatar cada bullet point em uma linha separada
-            const formattedContent = insightTexts.map(text => `• ${text}`).join('\n');
-            insights.push({
-              field: title,
-              content: formattedContent
-            });
-          }
+      const content = getPurpleContent(fieldsData[fieldId]);
+      if (content) insights.push({ field: title, content, numberLabel: '' });
+    }
+
+    // 2) Blocos numerados 1–10
+    for (const block of INSIGHTS_PDF_BLOCKS) {
+      const { blockNumber, fieldIds } = block;
+      fieldIds.forEach((fieldId, subIndex) => {
+        const title = fieldTitles[fieldId];
+        const content = getPurpleContent(fieldsData[fieldId]);
+        if (content) {
+          const numberLabel = fieldIds.length === 1
+            ? `${blockNumber}.`
+            : `${blockNumber}.${String.fromCharCode(97 + subIndex)}.`;
+          insights.push({ field: title, content, numberLabel });
         }
-      }
-    });
+      });
+    }
 
     if (insights.length === 0) {
       alert('Nenhum insight encontrado. Adicione bullet points com cor roxa para exportar.');
@@ -515,10 +540,10 @@ export const exportInsightsToPDF = async (elementId: string, filename: string) =
     // Definir posição fixa para o texto (fora do loop)
     let textStartX = margin + 15; // Margem fixa de 15mm para o texto
     
-    insights.forEach((insight, index) => {
+    insights.forEach((insight) => {
       // Título do campo com alinhamento fixo
       pdf.setFont('helvetica', 'bold');
-      const numberText = `${index + 1}.`;
+      const numberText = insight.numberLabel; // 1.a., 1.b., 2., ou '' para campos sem número
       const fieldText = insight.field;
       
       // Verificar se precisa de nova página para o título
@@ -530,11 +555,13 @@ export const exportInsightsToPDF = async (elementId: string, filename: string) =
         pdf.setFontSize(12);
       }
       
-      // Posicionar número com largura fixa
-      pdf.text(numberText, margin, currentY - 2);
-      
-      // Posicionar texto do campo com margem fixa (independente do tamanho do número)
-      pdf.text(fieldText, textStartX, currentY - 2);
+      // Posicionar número (se houver) e texto do campo
+      if (numberText) {
+        pdf.text(numberText, margin, currentY - 2);
+        pdf.text(fieldText, textStartX, currentY - 2);
+      } else {
+        pdf.text(fieldText, margin, currentY - 2);
+      }
       currentY += 10;
 
       // Conteúdo do insight
