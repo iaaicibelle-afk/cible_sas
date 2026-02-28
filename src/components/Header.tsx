@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, RefreshCw, Sun, Moon, FileSpreadsheet, Lightbulb, Save, FolderOpen, LogOut, Settings } from 'lucide-react';
+import { Download, RefreshCw, Sun, Moon, FileSpreadsheet, Lightbulb, Save, FolderOpen, LogOut, Settings, Trophy } from 'lucide-react';
 import { useCanvas } from '../context/CanvasContext';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -153,6 +153,18 @@ const Header: React.FC = () => {
               </div>
             )}
           </div>
+
+          <button
+            onClick={() => navigate('/hackaton')}
+            className={`flex items-center gap-2 px-3 py-2 rounded-md transition-colors ${
+              isDarkMode 
+                ? 'bg-purple-700 hover:bg-purple-600 text-white' 
+                : 'bg-purple-600 hover:bg-purple-700 text-white'
+            }`}
+          >
+            <Trophy size={16} />
+            <span className="hidden md:inline">Hackaton</span>
+          </button>
 
           {profile?.role === 'super_admin' && (
             <>
