@@ -25,6 +25,7 @@ dist-ssr
 
 # Video files
 public/*.mp4
+!public/video-hackaton.mp4
 *.webm
 *.ogg
 
