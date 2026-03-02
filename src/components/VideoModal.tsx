@@ -67,8 +67,6 @@ const VideoModal: React.FC<VideoModalProps> = ({
               style={{ objectFit: 'contain' }}
             >
               <source src={videoSrc} type="video/mp4" />
-              <source src={videoSrc} type="video/webm" />
-              <source src={videoSrc} type="video/ogg" />
               Seu navegador não suporta a reprodução de vídeo.
             </video>
           </div>

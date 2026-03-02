@@ -32,8 +32,7 @@ const HackatonForm: React.FC<HackatonFormProps> = ({
   const [book_operacionalizacao, setBookOperacionalizacao] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [videoInsightOpen, setVideoInsightOpen] = useState(false);
-  const [videoBookOpen, setVideoBookOpen] = useState(false);
+  const [videoHackatonOpen, setVideoHackatonOpen] = useState(false);
 
   const validateVerbStart = (text: string): boolean => {
     const trimmed = text.trim();
@@ -253,11 +252,11 @@ const HackatonForm: React.FC<HackatonFormProps> = ({
             Lembre-se: insights devem sempre iniciar com verbo. Dúvidas,{' '}
             <button
               type="button"
-              onClick={() => setVideoInsightOpen(true)}
+              onClick={() => setVideoHackatonOpen(true)}
               className="text-purple-500 hover:text-purple-400 underline inline-flex items-center gap-1"
             >
               <Video size={14} />
-              assista ao vídeo de ajuda
+              assista ao vídeo de apresentação
             </button>
           </p>
         </div>
@@ -277,11 +276,11 @@ const HackatonForm: React.FC<HackatonFormProps> = ({
             Tem dúvidas de como fazer o seu passo a passo?{' '}
             <button
               type="button"
-              onClick={() => setVideoBookOpen(true)}
+              onClick={() => setVideoHackatonOpen(true)}
               className="text-purple-500 hover:text-purple-400 underline inline-flex items-center gap-1"
             >
               <Video size={14} />
-              Clique aqui e assista o vídeo explicativo
+              Assista ao vídeo de apresentação
             </button>
           </p>
         </div>
@@ -309,16 +308,10 @@ const HackatonForm: React.FC<HackatonFormProps> = ({
       </form>
 
       <VideoModal
-        isOpen={videoInsightOpen}
-        onClose={() => setVideoInsightOpen(false)}
-        videoSrc="/video-insight-verbo.mp4"
-        title="Insights com verbo"
-      />
-      <VideoModal
-        isOpen={videoBookOpen}
-        onClose={() => setVideoBookOpen(false)}
-        videoSrc="/video-book-operacionalizacao.mp4"
-        title="Book de Operacionalização"
+        isOpen={videoHackatonOpen}
+        onClose={() => setVideoHackatonOpen(false)}
+        videoSrc="/video-hackaton.mp4"
+        title="Vídeo de Apresentação - Hackathon"
       />
     </>
   );

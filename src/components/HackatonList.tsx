@@ -6,7 +6,7 @@ import {
   Calendar, Trash2, User, ArrowLeft, Search,
   CheckCircle, Circle, ChevronDown, ChevronUp,
   Building2, Globe, Hash, LayoutGrid, FileText, BookOpen,
-  Download, Paperclip,
+  Download, Paperclip, Pencil, Save, X,
 } from 'lucide-react';
 import { HACKATON_QUADRANTES } from '../constants/hackatonQuadrantes';
 
@@ -47,6 +47,9 @@ const HackatonList: React.FC<HackatonListProps> = ({ onDataChange }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterConcluido, setFilterConcluido] = useState<FilterConcluido>('todos');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingBookId, setEditingBookId] = useState<string | null>(null);
+  const [editBookValue, setEditBookValue] = useState('');
+  const [savingBook, setSavingBook] = useState(false);
 
   useEffect(() => {
     if (profile?.role === 'super_admin' && !selectedUserId) {
@@ -148,7 +151,37 @@ const HackatonList: React.FC<HackatonListProps> = ({ onDataChange }) => {
     }
   };
 
-  const toggleExpand = (id: string) => setExpandedId(expandedId === id ? null : id);
+  const startEditBook = (h: SavedHackaton) => {
+    setEditingBookId(h.id);
+    setEditBookValue(h.book_operacionalizacao);
+  };
+
+  const cancelEditBook = () => {
+    setEditingBookId(null);
+    setEditBookValue('');
+  };
+
+  const saveEditBook = async (id: string) => {
+    if (!editBookValue.trim()) return;
+    setSavingBook(true);
+    const { error } = await supabase
+      .from('hackaton')
+      .update({ book_operacionalizacao: editBookValue.trim(), updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .eq('user_id', user!.id);
+    setSavingBook(false);
+    if (error) { console.error('Error saving book:', error); return; }
+    setEditingBookId(null);
+    setEditBookValue('');
+    fetchHackatons();
+  };
+
+  const toggleExpand = (id: string) => {
+    if (expandedId === id) {
+      cancelEditBook();
+    }
+    setExpandedId(expandedId === id ? null : id);
+  };
   const handleUserSelect = (userId: string) => setSelectedUserId(userId);
   const handleBackToUsers = () => { setSelectedUserId(null); setHackatons([]); };
 
@@ -385,12 +418,64 @@ const HackatonList: React.FC<HackatonListProps> = ({ onDataChange }) => {
                       isDarkMode={isDarkMode}
                     />
 
-                    <DetailBlock
-                      icon={<BookOpen size={14} />}
-                      label="Book de Operacionalização"
-                      value={h.book_operacionalizacao}
-                      isDarkMode={isDarkMode}
-                    />
+                    {/* Book de Operacionalização — editável pelo dono quando não concluído */}
+                    <div>
+                      <div className={`flex items-center justify-between mb-1`}>
+                        <div className={`flex items-center gap-1.5 text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <BookOpen size={14} />Book de Operacionalização
+                        </div>
+                        {isOwner && !h.concluido && editingBookId !== h.id && (
+                          <button
+                            onClick={() => startEditBook(h)}
+                            className={`flex items-center gap-1 text-xs font-medium transition-colors ${
+                              isDarkMode ? 'text-purple-300 hover:text-purple-200' : 'text-purple-600 hover:text-purple-700'
+                            }`}
+                          >
+                            <Pencil size={12} />
+                            Editar
+                          </button>
+                        )}
+                      </div>
+                      {editingBookId === h.id ? (
+                        <div className="space-y-2">
+                          <textarea
+                            value={editBookValue}
+                            onChange={(e) => setEditBookValue(e.target.value)}
+                            className={`w-full px-3 py-2 rounded-md border min-h-[140px] text-sm ${
+                              isDarkMode
+                                ? 'bg-gray-800 border-gray-600 text-white placeholder-gray-400'
+                                : 'bg-white border-gray-300 text-gray-900'
+                            } focus:outline-none focus:ring-2 focus:ring-purple-500`}
+                          />
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={cancelEditBook}
+                              disabled={savingBook}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                                isDarkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'
+                              }`}
+                            >
+                              <X size={14} />
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => saveEditBook(h.id)}
+                              disabled={savingBook || !editBookValue.trim()}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50"
+                            >
+                              <Save size={14} />
+                              {savingBook ? 'Salvando...' : 'Salvar'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className={`text-sm whitespace-pre-wrap rounded-md p-3 ${
+                          isDarkMode ? 'bg-gray-800/60 text-gray-200' : 'bg-gray-50 text-gray-800'
+                        }`}>
+                          {h.book_operacionalizacao}
+                        </div>
+                      )}
+                    </div>
 
                     {/* Ações */}
                     <div className={`flex items-center gap-2 pt-3 border-t flex-wrap ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
